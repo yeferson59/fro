@@ -1,44 +1,71 @@
 'use server'
 
+import { z } from 'zod'
+import { SignInType, SignUpType } from '../definitions/types'
+import { signIn } from '@/auth'
+import { AuthError } from 'next-auth'
 import { redirect } from 'next/navigation'
 
-export async function signIn(formData: FormData) {
-    const email = formData.get('email')
-    const password = formData.get('password')
+const signInSchema = z.object({
+    email: z.string().email("Por favor, introduce un correo electrónico válido."),
+    password: z.string().min(1, "La contraseña es requerida.")
+})
 
-    // Aquí deberías implementar la lógica real de autenticación
-    // Por ahora, simularemos una autenticación básica
-    if (email === 'usuario@ejemplo.com' && password === 'contraseña123') {
-        redirect('/dashboard')
+export async function signInAction(prevState: SignInType, formData: FormData) {
+
+    const { success, data, error } = signInSchema.safeParse(Object.fromEntries(formData))
+
+    if (!success) {
+        return { errors: error.flatten().fieldErrors }
     }
 
-    return { error: 'Credenciales inválidas' }
+    try {
+        await signIn('credentials', data)
+    } catch (error) {
+        if (error instanceof AuthError) {
+            switch (error.type) {
+                case 'CredentialsSignin':
+                    return { success: false, message: 'Error' }
+                default:
+                    return { success: false, message: 'Ocurrió un error' }
+            }
+        }
+        throw error
+    }
 }
 
-export async function signUp(formData: FormData) {
-    const name = formData.get('name')
-    const lastName = formData.get('lastName')
-    const user = formData.get('user')
-    const email = formData.get('email')
-    const password = formData.get('password')
+const signUpSchema = z.object({
+    name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
+    lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres."),
+    username: z.string().min(4, "El nombre de usuario debe tener al menos 4 caracteres."),
+    email: z.string().email("Por favor, introduce un correo electrónico válido."),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres.")
+})
 
-    // Aquí deberías implementar la lógica real de registro
-    // Por ahora, simularemos un registro básico con validaciones
-    if (name && lastName && user && email && password) {
-        // Validación básica
-        if (typeof user === 'string' && user.length < 4) {
-            return { error: 'El nombre de usuario debe tener al menos 4 caracteres.' }
-        }
-        if (typeof password === 'string' && password.length < 8) {
-            return { error: 'La contraseña debe tener al menos 8 caracteres.' }
-        }
+export async function signUp(response: SignUpType, formData: FormData) {
 
-        // En una aplicación real, aquí verificarías si el usuario ya existe,
-        // guardarías los datos en la base de datos, enviarías un email de confirmación, etc.
+    const { success, error, data } = signUpSchema.safeParse(Object.fromEntries(formData))
 
-        console.log('Usuario registrado:', { name, lastName, user, email })
-        redirect('/dashboard')
+    if (!success) {
+        console.log(error)
+        return { errors: error.flatten().fieldErrors }
     }
 
-    return { error: 'Todos los campos son requeridos. Por favor, intenta de nuevo.' }
+    console.log(data)
+
+    try {
+        const response = await fetch('https://backend-finance-app-fry1.onrender.com/api/auth/sign-up', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        })
+
+        if (!response.ok) {
+            return { success: false, message: 'error' }
+        }
+        redirect('auth/sign-in')
+    } catch (error) {
+        console.error('Error during authentication:', error)
+        return { success: false, message: 'error' }
+    }
 }

@@ -1,27 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useActionState } from 'react'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, LockIcon, MailIcon, UserIcon, UserPlusIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { CheckCircle2, LockIcon, MailIcon, UserIcon, UserPlusIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import { signUp } from '@/lib/actions/auth'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 
 export default function SignUp() {
-    const [error, setError] = useState('')
     const [showPassword, setShowPassword] = useState(false)
-    const router = useRouter()
-
-    async function handleSubmit(formData: FormData) {
-        const result = await signUp(formData)
-        if (result.error) {
-            setError(result.error)
-        } else {
-            router.push('/dashboard')
-        }
-    }
+    const [state, formAction, pending] = useActionState(signUp, undefined)
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword)
@@ -37,7 +27,7 @@ export default function SignUp() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <form action={handleSubmit}>
+                    <form action={formAction}>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nombre</Label>
@@ -49,9 +39,12 @@ export default function SignUp() {
                                         type="text"
                                         placeholder="Juan"
                                         required
-                                        className="pl-10"
+                                        className={`pl-10 ${state?.errors?.name ? 'border-red-500' : ''}`}
                                     />
                                 </div>
+                                {state?.errors?.name && (
+                                    <p className="text-red-500 text-sm mt-1">{state?.errors.name}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lastName">Apellido</Label>
@@ -63,9 +56,12 @@ export default function SignUp() {
                                         type="text"
                                         placeholder="Pérez"
                                         required
-                                        className="pl-10"
+                                        className={`pl-10 ${state?.errors?.lastName ? 'border-red-500' : ''}`}
                                     />
                                 </div>
+                                {state?.errors?.lastName && (
+                                    <p className="text-red-500 text-sm mt-1">{state.errors.lastName}</p>
+                                )}
                             </div>
                         </div>
                         <div className="space-y-2 mt-4">
@@ -74,13 +70,16 @@ export default function SignUp() {
                                 <UserPlusIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                                 <Input
                                     id="user"
-                                    name="user"
+                                    name="username"
                                     type="text"
                                     placeholder="juanperez123"
                                     required
-                                    className="pl-10"
+                                    className={`pl-10 ${state?.errors?.username ? 'border-red-500' : ''}`}
                                 />
                             </div>
+                            {state?.errors?.username && (
+                                <p className="text-red-500 text-sm mt-1">{state?.errors.username}</p>
+                            )}
                         </div>
                         <div className="space-y-2 mt-4">
                             <Label htmlFor="email">Correo Electrónico</Label>
@@ -92,9 +91,12 @@ export default function SignUp() {
                                     type="email"
                                     placeholder="juan@ejemplo.com"
                                     required
-                                    className="pl-10"
+                                    className={`pl-10 ${state?.errors?.email ? 'border-red-500' : ''}`}
                                 />
                             </div>
+                            {state?.errors?.email && (
+                                <p className="text-red-500 text-sm mt-1">{state.errors.email}</p>
+                            )}
                         </div>
                         <div className="space-y-2 mt-4">
                             <Label htmlFor="password">Contraseña</Label>
@@ -105,7 +107,7 @@ export default function SignUp() {
                                     name="password"
                                     type={showPassword ? "text" : "password"}
                                     required
-                                    className="pl-10 pr-10"
+                                    className={`pl-10 pr-10 ${state?.errors?.password ? 'border-red-500' : ''}`}
                                 />
                                 <button
                                     type="button"
@@ -120,18 +122,25 @@ export default function SignUp() {
                                     )}
                                 </button>
                             </div>
+                            {state?.errors?.password && (
+                                <p className="text-red-500 text-sm mt-1">{state.errors.password}</p>
+                            )}
                         </div>
-                        {error && (
-                            <div className="flex items-center space-x-2 text-red-600 mt-2">
-                                <AlertCircle size={20} />
-                                <span>{error}</span>
-                            </div>
-                        )}
-                        <Button type="submit" className="w-full mt-6 bg-blue-600 hover:bg-blue-700">
+                        <Button
+                            type="submit"
+                            aria-disabled={pending}
+                            className="w-full mt-6 bg-blue-600 hover:bg-blue-700"
+                        >
                             Crear Cuenta
                         </Button>
                     </form>
                 </CardContent>
+                {state?.success && (
+                    <div className="flex items-center justify-center space-x-2 text-green-600 mt-4">
+                        <CheckCircle2 size={20} />
+                        <span>{state?.message}</span>
+                    </div>
+                )}
                 <CardFooter>
                     <p className="text-center text-sm text-gray-600 mt-2 w-full">
                         ¿Ya tienes una cuenta?{' '}
